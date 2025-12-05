@@ -1,0 +1,11 @@
+# streamlit
+openai
+pillow 
+python-dotenv
+PyYAML
+opencv-python-headless
+termcolor
+google
+google-genai
+fastapi
+uvicorn

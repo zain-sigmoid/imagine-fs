@@ -1,0 +1,40 @@
+.app-shell {
+  /* min-height: 100vh; */
+  display: flex;
+  flex-direction: column;
+  background: #f4f6fb;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #eef3ff 0%, #fdfcff 100%);
+  border-bottom: 1px solid #dee6f5;
+  padding: 5% 1%;
+}
+
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.section-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.15);
+}
+
+.sticky-sidebar {
+  position: sticky;
+  top: 96px;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-icon i {
+  font-size: 1rem;
+}
