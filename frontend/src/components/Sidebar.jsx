@@ -1,4 +1,11 @@
-function RecentImages({ recentImages, onUseImage, onDeleteImage, loading }) {
+function RecentImages({
+  recentImages,
+  onUseImage,
+  onDeleteImage,
+  loading,
+  relatedImages,
+}) {
+  // console.log("Rendering recent image item:", recentImages);
   return (
     <div className="section-card p-4 mb-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -10,83 +17,183 @@ function RecentImages({ recentImages, onUseImage, onDeleteImage, loading }) {
           {recentImages.length}
         </span>
       </div>
-      {recentImages.length === 0 ? (
-        <p className="text-muted small mb-0">
-          Your latest generations will appear here for quick re-use. Run a
-          concept to begin the gallery.
-        </p>
-      ) : (
-        <ul className="list-group list-group-flush">
-          {recentImages.map((item) => {
-            console.log(item);
-            const identifier = item.id || item.saved_path || item.path;
-            const timeLabel =
-              item.created_at &&
-              new Date(item.created_at).toLocaleString(undefined, {
-                hour: "2-digit",
-                minute: "2-digit",
-                month: "short",
-                day: "numeric",
-              });
-            return (
-              <li
-                className="list-group-item px-0 d-flex align-items-center gap-3"
-                key={identifier}
-              >
-                <div className="flex-shrink-0">
-                  {item.data_b64 ? (
-                    <img
-                      // src={item.thumbnail || item.url}
-                      src={`data:${item.mime_type};base64,${item.data_b64}`}
-                      alt={item.filename || "Previous design"}
-                      className="rounded-3 border"
-                      width="64"
-                      height="64"
-                    />
-                  ) : (
-                    <div className="rounded-3 border bg-light d-flex align-items-center justify-content-center text-muted">
-                      <i className="fa-regular fa-image px-3 py-2"></i>
+      <div style={{ maxHeight: "425px", overflowY: "auto" }}>
+        {recentImages.length === 0 ? (
+          <p className="text-muted small mb-0">
+            Your latest generations will appear here for quick re-use. Run a
+            concept to begin the gallery.
+          </p>
+        ) : (
+          <ul className="list-group list-group-flush">
+            {recentImages.map((item) => {
+              const identifier = item.id;
+              const image = item?.variants?.original || {};
+              return (
+                <li
+                  className="list-group-item px-0 d-flex align-items-center gap-3"
+                  key={identifier}
+                >
+                  <div className="flex-shrink-0">
+                    {image.data_b64 ? (
+                      <img
+                        // src={item.thumbnail || item.url}
+                        src={`data:${image.mime_type};base64,${image.data_b64}`}
+                        alt={image.name || "Previous design"}
+                        className="rounded-3 border"
+                        width="64"
+                        height="64"
+                      />
+                    ) : (
+                      <div className="rounded-3 border bg-light d-flex align-items-center justify-content-center text-muted">
+                        <i className="fa-regular fa-image px-3 py-2"></i>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-grow-1">
+                    {item?.name?.map((label) => (
+                      <span
+                        key={label}
+                        className="badge text-bg-light fw-normal me-1 mb-1 border border-success"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="d-flex align-self-start">
+                    <div className="dropdown ms-auto">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-default"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        disabled={loading}
+                      >
+                        <i className="fa-solid fa-ellipsis-vertical"></i>
+                      </button>
+
+                      <ul className="dropdown-menu dropdown-menu-end">
+                        <li style={{ fontSize: "14px" }}>
+                          <button
+                            className="dropdown-item"
+                            type="button"
+                            onClick={() => onUseImage(item)}
+                            disabled={loading}
+                          >
+                            <i className="fa-solid fa-rotate me-2"></i>
+                            Use
+                          </button>
+                        </li>
+                        <li style={{ fontSize: "14px" }}>
+                          <button
+                            className="dropdown-item text-danger"
+                            type="button"
+                            onClick={() => onDeleteImage(identifier)}
+                            disabled={loading}
+                          >
+                            <i className="fa-solid fa-trash me-2"></i>
+                            Delete
+                          </button>
+                        </li>
+                      </ul>
                     </div>
-                  )}
-                </div>
-                <div className="flex-grow-1">
-                  <p className="mb-1 small fw-semibold text-dark">
-                    {item.filename || "Unnamed napkin"}
-                  </p>
-                  {timeLabel && (
-                    <p className="mb-0 small text-muted">{timeLabel}</p>
-                  )}
-                </div>
-                <div className="d-flex flex-column gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={() => onUseImage(identifier)}
-                    disabled={loading}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      {relatedImages && relatedImages.length > 0 && (
+        <>
+          <hr className="my-4" />
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h2 className="h5 text-dark mb-0">
+              <i className="fa-solid fa-images me-2 text-primary"></i>
+              Related Images
+            </h2>
+            <span className="badge text-bg-light text-dark">
+              {relatedImages.length}
+            </span>
+          </div>
+          <div
+            style={{
+              maxHeight: "325px",
+              overflowY: "auto",
+            }}
+          >
+            <ul className="list-group list-group-flush">
+              {relatedImages.map((item) => {
+                const identifier = item.id;
+                const image = item?.variants?.original || {};
+                return (
+                  <li
+                    className="list-group-item px-0 d-flex align-items-center gap-3"
+                    key={identifier}
                   >
-                    <i className="fa-solid fa-rotate me-1"></i>
-                    Use
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => onDeleteImage(identifier)}
-                    disabled={loading}
-                  >
-                    <i className="fa-solid fa-trash me-1"></i>
-                    Delete
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="flex-shrink-0">
+                      {image.data_b64 ? (
+                        <img
+                          src={`data:${image.mime_type};base64,${image.data_b64}`}
+                          alt={item.filename || "Related design"}
+                          className="rounded-3 border"
+                          width="64"
+                          height="64"
+                        />
+                      ) : (
+                        <div className="rounded-3 border bg-light d-flex align-items-center justify-content-center text-muted">
+                          <i className="fa-regular fa-image px-3 py-2"></i>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-grow-1">
+                      {item?.name?.map((label) => (
+                        <span
+                          key={label}
+                          className="badge text-bg-light fw-normal me-1 mb-1 border border-info"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="d-flex align-self-start">
+                      <div className="dropdown ms-auto">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-default"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                          disabled={loading}
+                        >
+                          <i className="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+
+                        <ul className="dropdown-menu dropdown-menu-end">
+                          <li style={{ fontSize: "14px" }}>
+                            <button
+                              className="dropdown-item"
+                              type="button"
+                              onClick={() => onUseImage(item)}
+                              disabled={loading}
+                            >
+                              <i className="fa-solid fa-rotate me-2"></i>
+                              Use
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function EditPanel({
+export function EditPanel({
   imageSets,
   selectedComboIndex,
   onComboChange,
@@ -96,6 +203,7 @@ function EditPanel({
   activeVariant,
   onVariantChange,
   loading,
+  editRef,
 }) {
   const options = imageSets.map((set, index) => {
     const combo = set.combo || {};
@@ -104,8 +212,8 @@ function EditPanel({
       .map((part) => String(part).replace("Default", "").trim())
       .filter(Boolean);
     const label = labelParts.length
-      ? `Combo ${index + 1} · ${labelParts.join(" × ")}`
-      : `Combo ${index + 1}`;
+      ? `Image ${index + 1}`
+      : `Image ${index + 1}`;
     return {
       value: index,
       label,
@@ -181,12 +289,16 @@ function EditPanel({
           <div className="mb-3">
             <label className="form-label text-uppercase small text-muted fw-semibold">
               Edit prompt
+              <i className="fa-solid fa-star fa-2xs text-danger ms-1"></i>
             </label>
             <textarea
               className="form-control"
               rows="3"
               value={editPrompt}
-              onChange={(event) => onEditPromptChange(event.target.value)}
+              onChange={(event) => {
+                onEditPromptChange(event.target.value);
+                editRef.current = event.target.value;
+              }}
               placeholder="E.g. brighten the background, add gold foil monogram on the centre, soften the stripes."
             ></textarea>
           </div>
@@ -195,7 +307,7 @@ function EditPanel({
             type="button"
             className="btn btn-success w-100 btn-icon"
             onClick={onEditSubmit}
-            disabled={loading}
+            disabled={loading || editPrompt === ""}
           >
             <i className="fa-solid fa-wand-magic"></i>
             {loading ? "Applying…" : "Apply Edit"}
@@ -208,9 +320,9 @@ function EditPanel({
 
 function Sidebar(props) {
   return (
-    <aside className="sticky-sidebar">
+    <aside>
       <RecentImages {...props} />
-      <EditPanel {...props} />
+      {/* <EditPanel {...props} /> */}
     </aside>
   );
 }
