@@ -1,0 +1,15 @@
+.sidebar .nav-link {
+  text-decoration: none !important;
+}
+.sidebar .nav-link.active {
+  text-decoration: none !important;
+}
+.sidebar .nav-link:hover {
+  text-decoration: none !important;
+}
+.sidebar .nav-link {
+  border-radius: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 1.1rem;
+  color: #495057;
+}

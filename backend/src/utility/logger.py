@@ -1,7 +1,10 @@
+"""Shared logging configuration with colored console output and file support."""
+
 import logging
 from logging import Logger
 from pathlib import Path
 from typing import Optional
+from src.utility.path_finder import Finder
 
 
 # ANSI color codes for terminal
@@ -22,6 +25,7 @@ class ColorFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format a log record with a colorized level name for console output."""
         # Build a padded level name so spacing stays consistent
         padded_level = f"{record.levelname + ':':<9}"
         color = LEVEL_COLORS.get(record.levelname, "")
@@ -55,7 +59,7 @@ class AppLogger:
         cls,
         level: int = logging.INFO,
         log_to_file: bool = False,
-        filename: str = "fastapi_llm.log",
+        filename: str = "fastapi_server.log",
     ) -> None:
         """
         Initialize root logger with colored console handler and optional file handler.
@@ -65,7 +69,7 @@ class AppLogger:
             return
 
         cls._configured = True
-
+        cls.path_finder = Finder()
         # Get root logger
         root_logger = logging.getLogger()
         root_logger.setLevel(level)
@@ -86,7 +90,8 @@ class AppLogger:
         # Optional file handler (no colors)
         if log_to_file:
             # Place logs alongside sibling microservices at Microservices/logs
-            logs_dir = Path(__file__).resolve().parents[2] / "logs"
+            data_dir = cls.path_finder.get_directory("data")
+            logs_dir = data_dir / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
             file_path = logs_dir / filename
 

@@ -5,6 +5,9 @@ import Toast from "./components/Toast";
 import Scrolltotop from "./components/Scrolltotop";
 import Home from "./pages/Home";
 import Wrong from "./pages/Wrong";
+import UserState from "./context/UserState";
+import Gallery from "./pages/gallery/Gallery";
+import Selections from "./pages/Selections";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -35,7 +38,7 @@ function App() {
   };
 
   return (
-    <>
+    <UserState>
       <Router>
         <Alert alert={alert} />
         <Scrolltotop />
@@ -56,12 +59,22 @@ function App() {
           ></Route>
           <Route
             exact
+            path="/gallery"
+            element={<Gallery prop={{ showAlert, showToast }} />}
+          ></Route>
+          <Route
+            exact
             path="/:wrong"
             element={<Wrong prop={{ showAlert, showToast }} />}
           ></Route>
+          <Route
+            exact
+            path="/studio"
+            element={<Selections prop={{ showAlert, showToast }} />}
+          ></Route>
         </Routes>
       </Router>
-    </>
+    </UserState>
   );
 }
 

@@ -21,4 +21,11 @@ streamlit/
 backend/logs/
 backend/src/demo
 backend/src/outputs
-backend/notebook.ipynb
+backend/notebooks
+backend/extra
+backend/data/demo
+backend/data/logs
+backend/data/outputs/*.png
+backend/data/outputs/*.json
+
+frontend/extra
