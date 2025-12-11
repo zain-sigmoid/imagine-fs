@@ -1,23 +1,33 @@
 # Imagine (full-stack)
 
-LLM-powered premium napkin designer with a React/Vite frontend and a FastAPI backend. Users pick a theme, tweak palette/pattern/motif/style/finish filters, and generate variants with optional Gemini/OpenAI image calls or a built-in mock pipeline.
+LLM-powered premium napkin designer with a React/Vite frontend and a FastAPI backend. Users pick a theme, tweak palette/pattern/motif/style/finish filters, and generate variants via streaming Gemini/OpenAI calls (with mock/local fallbacks) plus related/recent browsing.
 
 ## What’s inside
-- React 19 + Vite UI (`frontend/`) with a prompt builder, gallery, and sidebar for history and edit prompts.
-- FastAPI service (`backend/api_server.py`) that builds prompts from `backend/core`, generates images (mocked by default), and returns enhanced variants.
-- Post-processing and prompt utilities in `backend/core` (OpenCV, Pillow, YAML-based prompt templates).
-- Sample renders and metadata under `backend/src/outputs` (latest saved to `backend/src/outputs/now`).
+- React 19 + Vite UI (`frontend/`) with streaming generation, gallery, related/recent panes, downloads, edits, and selection-first flows.
+- FastAPI service (`backend/src`) that streams generation events, serves paginated related/recent images, and supports downloads/deletes/edits.
+- Post-processing and prompt utilities (OpenCV + Pillow), LLM combiner for defaulted selections, and metadata-backed storage.
+- Inline mock paths remain available so the UI can run without external API costs.
 
 ## Repository layout
 ```
 .
-├─ backend/          # FastAPI app + image/prompt core
-│  ├─ api_server.py  # API entrypoint (health, generate, edit stub)
-│  ├─ core/          # Prompt templates, options, post-processing, Gemini/OpenAI clients
-│  └─ requirements.txt
-└─ frontend/         # React/Vite client
-   ├─ src/           # Pages, components, services/api.js
-   └─ package.json
+├─ backend/                   # FastAPI app
+│  ├─ README.md
+│  ├─ requirements.txt
+│  └─ src/
+│     ├─ controller/          # Routers (generate/stream, related/recent, health)
+│     ├─ services/            # generation, editing, post-processing, LLM combiner
+│     ├─ models/              # Pydantic request/response schemas
+│     ├─ config/              # Themes, options, templates
+│     └─ utility/             # Paths, logging, helpers
+└─ frontend/                  # React/Vite client
+   ├─ README.md
+   ├─ src/
+   │  ├─ assets/              # static content
+   │  ├─ pages/               # Home (streaming), Selections, Gallery, etc.
+   │  ├─ components/          # Results gallery, sidebar, cards, etc.
+   │  └─ context/             # userContext + UserState (API + paging/state)
+   └─ public/ & index.html    # Static and inline assets
 ```
 
 ## Prerequisites
@@ -41,14 +51,15 @@ OPENAI_API_KEY=sk-***
 GEMINI_API_KEY=AIza***
 ```
 
-Run the server (default port 8001):
+Run the server (default port 8000):
 ```bash
-uvicorn api_server:app --reload --port 8001
+uvicorn src.controller.main_controller:app --reload --port 8000
 ```
 
 Notes:
-- The `/api/generate` route currently calls `Generate.generate_mock_image`, which reuses images from `backend/src/outputs/now`. Drop a few PNG/JPEG files there to demo the UI without API costs.
-- Swap to live Gemini/OpenAI generation by switching the generator inside `generate` in `api_server.py`.
+- Streaming generation is at `/api/image/generate/stream`; synchronous at `/api/image/generate`.
+- Related/recent paging is under `/api/image/related-images` and `/api/image/recent-images` (`offset`/`limit` supported).
+- Images and metadata persist under `backend/data/outputs`; mock/demo runs can reuse any PNG/JPEG dropped there.
 
 ## Frontend setup (React/Vite)
 ```bash
@@ -56,36 +67,43 @@ cd frontend
 npm install
 ```
 
-Create `frontend/.env.local` (frontend defaults to `http://localhost:8001/api` if unset):
+Create `frontend/.env` (frontend defaults to `http://localhost:8000/api` if unset):
 ```
-VITE_API_BASE_URL=http://localhost:8001/api
+VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
 Run the client:
 ```bash
-npm run dev -- --host --port 5173
+npm run dev
 ```
 
 ## Running the full stack locally
-1. Start FastAPI: `uvicorn api_server:app --reload --port 8001` from `backend/`.
+1. Start FastAPI: `uvicorn src.controller.main_controller:app --reload --port 8000` from `backend/`.
 2. Start Vite: `npm run dev -- --host --port 5173` from `frontend/`.
 3. Open the printed Vite URL (e.g., http://localhost:5173) and generate designs.
 
 ## API quick reference
 - `GET /health` — service heartbeat.
-- `POST /api/generate` — body: `{ theme, enhancement, extraDetail?, selections, catalog }` → returns `image_sets` with base64 variants (`original`, `low`, `medium`, `high`, `edited`) and recent images.
-- `POST /api/edit` — placeholder endpoint; wire to `Edit` in `backend/core/model.py` when ready.
+- `POST /api/image/generate` — synchronous image generation, returns variants and IDs.
+- `POST /api/image/generate/stream` — streams `prompt`, `image_variant`, `done` events as JSON lines.
+- `POST /api/image/related-images` — paginated related images (requires `id`, `theme`, `type`, `selections`).
+- `GET /api/image/recent-images` — paginated recent images.
+- `GET /api/image/download` — download any variant by `imageId` and `level`.
+- `DELETE /api/image/delete` or `/delete-all` — remove one or all generated assets.
+- `POST /api/image/edit` — edit pipeline (Gemini/OpenAI capable).
 
 ## Customisation
-- Prompt templates: `backend/core/templates.yml`
-- Theme presets: `backend/core/themes.py`
-- Dropdown options: `backend/core/options.py`
-- Post-processing: `backend/core/postprocessing.py`
+- Prompt templates: `backend/src/config/templates.yml`
+- Theme presets: `backend/src/config/themes.py`
+- Dropdown options: `backend/src/config/options.py`
+- Post-processing: `backend/src/services/post_service/post_processing.py`
+- Frontend API base: `frontend/.env.local` (`VITE_API_BASE_URL`)
 
 ## Troubleshooting
-- Empty options on load: frontend falls back to built-in defaults until a `/api/options` route is added.
-- No images returned: ensure `backend/src/outputs/now` has files (mock mode) or set API keys and enable live generation.
+- Empty options on load: `/api/image/options` falls back to defaults; confirm backend is reachable.
+- No images returned: ensure `backend/data/outputs` has files (mock mode) or set API keys and enable live generation.
 - OpenCV/Pillow import errors: reinstall with `pip install -r backend/requirements.txt` inside the virtual env (Apple Silicon may need `--no-binary opencv-python-headless`).
+- Infinite paging calls: verify `offset`/`limit` passed from frontend and that `has_more`/`total` responses are used.
 
 ## License
 This software is proprietary and confidential to Sigmoid Analytics, Inc.
