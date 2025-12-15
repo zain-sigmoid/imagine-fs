@@ -1,5 +1,6 @@
-import React, { useEffect, useContext, useLayoutEffect } from "react";
+import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import PlaceHolderCard from "../../../components/layout/PlaceHolderCard";
+import ViewModal from "../../../components/modals/ViewModal";
 import { useNavigate } from "react-router-dom";
 import { userContext } from "../../../context/userContext";
 import { TYPE_ICON } from "../../../config/icons";
@@ -16,8 +17,10 @@ const Previous = ({
   hasRecent,
   setHasRecent,
 }) => {
-  const { loadRecentImages, recentTotal } = useContext(userContext);
-  const list = items ?? recentImages ?? [];
+  const { loadRecentImages } = useContext(userContext);
+  console.log(items.length, recentImages.length);
+  const list = items ?? [];
+  const [selectedPreview, setSelectedPreview] = useState(null);
   const navigate = useNavigate();
 
   useLayoutEffect(() => {
@@ -45,6 +48,7 @@ const Previous = ({
       {list.length > 0 ? (
         list.map((img) => {
           const preview = img?.variants?.medium?.data_b64;
+          const previewSrc = `data:${img.variants.medium.mime_type};base64,${preview}`;
           const name = img?.name?.join(", ");
           const combo = img?.combo;
           const combo_key = [
@@ -54,14 +58,13 @@ const Previous = ({
             "pattern",
             "style",
           ];
-
           return (
             <div key={img.id} className="col-md-4">
               <div className="card shadow-sm h-100 position-relative">
                 {/* Image */}
                 <div className="img-hover-container">
                   <img
-                    src={`data:${img.variants.medium.mime_type};base64,${preview}`}
+                    src={previewSrc}
                     alt={name}
                     className="card-img-top zoom-image"
                     style={{ objectFit: "cover", height: "220px" }}
@@ -145,7 +148,7 @@ const Previous = ({
                     </button>
 
                     <ul className="dropdown-menu dropdown-menu-end glass-dropdown">
-                      <li style={{ fontSize: "16px" }}>
+                      <li style={{ fontSize: "14px" }}>
                         <button
                           className="dropdown-item"
                           type="button"
@@ -153,6 +156,18 @@ const Previous = ({
                         >
                           <i className="fa-solid fa-rotate me-2"></i>
                           Use
+                        </button>
+                      </li>
+                      <li style={{ fontSize: "14px" }}>
+                        <button
+                          className="dropdown-item"
+                          type="button"
+                          data-bs-toggle="modal"
+                          data-bs-target="#viewModal"
+                          onClick={() => setSelectedPreview(previewSrc)}
+                        >
+                          <i className="fa-solid fa-eye me-2"></i>
+                          View
                         </button>
                       </li>
                       <li style={{ fontSize: "14px" }}>
@@ -217,6 +232,7 @@ const Previous = ({
           )}
         </div>
       )}
+      <ViewModal previewSrc={selectedPreview} />
     </div>
   );
 };

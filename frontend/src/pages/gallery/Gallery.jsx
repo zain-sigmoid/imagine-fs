@@ -7,13 +7,16 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import Head from "./components/Head";
-import { EditPanel } from "../../components/Sidebar";
+// import { EditPanel } from "../../components/Sidebar";
 import { userContext } from "../../context/userContext";
 import Results from "./components/Results";
+import EditPanel from "./components/EditPanel";
 import Sidebar from "./components/Sidebar";
 import Previous from "./components/Previous";
 import Related from "./components/Related";
-import Modal from "../../components/Modal";
+import Modal from "../../components/modals/Modal";
+import Spinner from "../../components/Spinner";
+import "./styling/gallery.css";
 
 const Gallery = (props) => {
   const { showToast, showAlert } = props.prop;
@@ -73,6 +76,7 @@ const Gallery = (props) => {
     setRelatedImages([]);
     setSelectedComboIndex(0);
     setActiveVariant({});
+    setRelatedTotal([]);
     setEditPrompt("");
     setActiveTab("generated-images");
     lastRelatedKey.current = null;
@@ -204,7 +208,8 @@ const Gallery = (props) => {
       const alreadyLoaded = items.length >= offset + PAGE_SIZE;
       if (alreadyLoaded) {
         setPage(page);
-        setHasMore(items.length < (total || items.length));
+        const effectiveTotal = total || items.length;
+        setHasMore((page + 1) * PAGE_SIZE < effectiveTotal);
         return;
       }
       if (loading) return;
@@ -331,7 +336,6 @@ const Gallery = (props) => {
       loadRecent(0);
       return;
     }
-    console.log("running useeffect 4 on 318");
     setHasMoreRecent(items.length < total);
   }, [activeTab, loadRecent, loadingRecent, recentFetched]);
 
@@ -342,7 +346,12 @@ const Gallery = (props) => {
       <main>
         <div className="row g-4">
           <div className="col-lg-3">
-            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Sidebar
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              loadingRecent={loadingRecent}
+              loadingRelated={loadingRelated}
+            />
           </div>
           <div className="col-lg-9">
             <div className="container ps-4 pe-5 pt-4 pb-3">
@@ -387,7 +396,7 @@ const Gallery = (props) => {
                 </div>
               </div>
               {activeTab === "generated-images" && (
-                <div className="row g-4">
+                <div className="row g-3">
                   <div className="col-md-8">
                     <Results
                       imageSets={imageSets}
@@ -460,10 +469,16 @@ const Gallery = (props) => {
                       </li>
                       <li className="page-item disabled">
                         <span className="page-link">
-                          Page {recentPage + 1} of{" "}
-                          {Math.max(
-                            1,
-                            Math.ceil((recentTotal || 0) / PAGE_SIZE)
+                          {loadingRecent ? (
+                            <Spinner size="sm" color="primary" />
+                          ) : (
+                            <>
+                              Page {recentPage + 1} of{" "}
+                              {Math.max(
+                                1,
+                                Math.ceil((recentTotal || 0) / PAGE_SIZE)
+                              )}
+                            </>
                           )}
                         </span>
                       </li>
@@ -482,15 +497,6 @@ const Gallery = (props) => {
                       </li>
                     </ul>
                   </nav>
-                  {loadingRecent && (
-                    <div className="text-muted small d-flex justify-content-center">
-                      <div
-                        className="spinner-border spinner-border-sm text-primary me-2"
-                        role="status"
-                      ></div>
-                      Loading recent images…
-                    </div>
-                  )}
                 </>
               )}
               {activeTab === "related-images" && (
@@ -534,8 +540,14 @@ const Gallery = (props) => {
                       </li>
                       <li className="page-item disabled">
                         <span className="page-link">
-                          Page {relatedPage + 1} of{" "}
-                          {Math.max(1, Math.ceil((relatedTotal || 0) / 6))}
+                          {loadingRelated ? (
+                            <Spinner size="sm" color="primary" />
+                          ) : (
+                            <>
+                              Page {relatedPage + 1} of{" "}
+                              {Math.max(1, Math.ceil((relatedTotal || 0) / 6))}
+                            </>
+                          )}
                         </span>
                       </li>
                       <li
@@ -548,20 +560,11 @@ const Gallery = (props) => {
                           onClick={() => loadRelated(relatedPage + 1)}
                           disabled={!hasMoreRelated || loadingRelated}
                         >
-                          Next
+                          Next{" "}
                         </button>
                       </li>
                     </ul>
                   </nav>
-                  {loadingRelated && (
-                    <div className="text-muted small d-flex justify-content-center">
-                      <div
-                        className="spinner-border spinner-border-sm text-primary me-2"
-                        role="status"
-                      ></div>
-                      Loading related images…
-                    </div>
-                  )}
                 </>
               )}
             </div>

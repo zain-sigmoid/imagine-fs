@@ -1,6 +1,8 @@
 import React, { useLayoutEffect } from "react";
 import "../styling/card.css";
+import "../styling/head.css";
 import { TYPE_ICON } from "../../../config/icons";
+import ViewModal from "../../../components/modals/ViewModal";
 
 const ResultCard = ({
   imageSet,
@@ -156,6 +158,7 @@ const ResultCard = ({
 
   return (
     <div className="row g-4">
+      <ViewModal previewSrc={previewSrc} index={index} />
       <div className="col-md-7">
         <div className="ratio ratio-1x1 overflow-hidden rounded-4 border border-light-subtle position-relative">
           {previewSrc ? (
@@ -194,7 +197,6 @@ const ResultCard = ({
           </div>
         </div>
       </div>
-
       <div className="col-md-5">
         <div className="d-flex flex-wrap gap-2 mb-3">
           {variantButtons.map((option) => (
@@ -232,16 +234,33 @@ const ResultCard = ({
             </li>
           ))}
         </ul>
-        <aside className="d-flex justify-content-end align-items-center mt-3">
-          <button
-            className="btn btn-outline-primary btn-sm"
-            onClick={() => {
-              downloadImage(id, displayVariant);
-            }}
+        <aside className="d-flex justify-content-end align-items-center mt-4">
+          <div
+            class="btn-group"
+            role="group"
+            aria-label="Basic outlined example"
           >
-            <i className="fa-solid fa-download fa-sm me-2"></i>
-            Download
-          </button>
+            <button
+              className="btn btn-outline-success btn-sm"
+              type="button"
+              data-bs-toggle="modal"
+              data-bs-target="#viewModal"
+              style={{ fontSize: "12px" }}
+            >
+              <i className="fa-solid fa-eye fa-sm me-2"></i>
+              View Image
+            </button>
+            <button
+              className="btn btn-outline-primary btn-sm"
+              onClick={() => {
+                downloadImage(id, displayVariant);
+              }}
+              style={{ fontSize: "12px" }}
+            >
+              <i className="fa-solid fa-download fa-sm me-2"></i>
+              Download
+            </button>
+          </div>
         </aside>
       </div>
       <div className="d-flex justify-content-start gap-2">

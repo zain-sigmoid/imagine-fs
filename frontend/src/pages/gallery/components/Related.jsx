@@ -1,7 +1,8 @@
-import React, { useContext, useLayoutEffect } from "react";
+import React, { useState, useContext, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { userContext } from "../../../context/userContext";
 import PlaceHolderCard from "../../../components/layout/PlaceHolderCard";
+import ViewModal from "../../../components/modals/ViewModal";
 import { TYPE_ICON } from "../../../config/icons";
 import "../styling/card.css";
 
@@ -14,6 +15,7 @@ const Related = ({
 }) => {
   const { relatedImages } = useContext(userContext);
   const list = items ?? relatedImages;
+  const [selectedPreview, setSelectedPreview] = useState(null);
   const navigate = useNavigate();
 
   useLayoutEffect(() => {
@@ -30,6 +32,7 @@ const Related = ({
       {list.length > 0 ? (
         list.map((img, index) => {
           const preview = img?.variants?.medium?.data_b64;
+          const previewSrc = `data:${img.variants.medium.mime_type};base64,${preview}`;
           const name = img?.name?.join(", ");
           const combo = img?.combo;
           const combo_key = [
@@ -46,7 +49,7 @@ const Related = ({
                 {/* Image */}
                 <div className="img-hover-container">
                   <img
-                    src={`data:${img.variants.medium.mime_type};base64,${preview}`}
+                    src={previewSrc}
                     alt={name}
                     className="card-img-top zoom-image"
                     style={{ objectFit: "cover", height: "220px" }}
@@ -146,6 +149,18 @@ const Related = ({
                         <button
                           className="dropdown-item"
                           type="button"
+                          data-bs-toggle="modal"
+                          data-bs-target="#viewModal"
+                          onClick={() => setSelectedPreview(previewSrc)}
+                        >
+                          <i className="fa-solid fa-eye me-2"></i>
+                          View
+                        </button>
+                      </li>
+                      <li style={{ fontSize: "14px" }}>
+                        <button
+                          className="dropdown-item"
+                          type="button"
                           onClick={() => downloadImage(img?.id, "org")}
                         >
                           <i className="fa-solid fa-download me-2"></i>
@@ -206,6 +221,7 @@ const Related = ({
           )}
         </div>
       )}
+      <ViewModal previewSrc={selectedPreview} />
     </div>
   );
 };

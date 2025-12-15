@@ -1,9 +1,15 @@
 import React, { useContext, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { userContext } from "../../../context/userContext";
+import Spinner from "../../../components/Spinner";
 import "../styling/gallery.css";
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({
+  activeTab,
+  setActiveTab,
+  loadingRecent,
+  loadingRelated,
+}) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { relatedTotal, recentTotal } = useContext(userContext);
@@ -74,7 +80,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                   }`}
                   onClick={() => setActiveTab("previous-images")}
                 >
-                  Previous Images
+                  Previous Images{" "}
+                  {loadingRecent && (
+                    <Spinner type="grow" size="sm" color="secondary" />
+                  )}
                   <span className="badge text-bg-secondary">{recentTotal}</span>
                 </Link>
               </li>
@@ -87,6 +96,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                   onClick={() => setActiveTab("related-images")}
                 >
                   Related Images{" "}
+                  {loadingRelated && (
+                    <Spinner type="grow" size="sm" color="secondary" />
+                  )}
                   <span className="badge text-bg-secondary">
                     {relatedTotal}
                   </span>
