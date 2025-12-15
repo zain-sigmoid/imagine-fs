@@ -36,7 +36,7 @@ class LLMCombiner:
         """Check whether a selection value is marked as default."""
         return isinstance(val, str) and val.strip().lower() == "default"
 
-    def build_prompt(self, selections: Json, catalog: Json) -> str:
+    def build_prompt(self, type: str, selections: Json, catalog: Json) -> str:
         """
         selections: dict like {"color_palette": "...", "pattern": "...", "motif": "...", "style": "...", "finish": "..."}
         catalog: dict like {"color_palette": [...], "pattern": [...], "motif": [...], "style": [...], "finish": [...]}
@@ -45,6 +45,7 @@ class LLMCombiner:
         user_selections_json = json.dumps(selections, ensure_ascii=False, indent=2)
         catalog_json = json.dumps(catalog, ensure_ascii=False, indent=2)
         return PROMPT_TEMPLATE.format(
+            type=type,
             user_selections_json=user_selections_json,
             catalog_json=catalog_json,
         )
@@ -172,11 +173,11 @@ class LLMCombiner:
                 uniq.append(c)
         return uniq[:3]
 
-    def generate(self, selections: Json, catalog: Json) -> List[Json]:
+    def generate(self, type: str, selections: Json, catalog: Json) -> List[Json]:
         """
         Returns exactly 3 combinations.
         """
-        prompt = self.build_prompt(selections, catalog)
+        prompt = self.build_prompt(type, selections, catalog)
 
         # Try LLM
         try:
@@ -239,7 +240,7 @@ class GeminiClient:
         try:
             resp = client.models.generate_content(model=model, contents=prompt)
         except Exception as e:
-            self.map_exception.map_gemini_exception(e)
+            raise self.map_exception.map_gemini_exception(e)
 
         # Extract text robustly
         if getattr(resp, "text", None):
@@ -259,7 +260,7 @@ class GeminiClient:
         return str(resp)
 
     def generate_rationale(
-        self, combination: Dict[Any], model: str = "gemini-2.0-flash"
+        self, type: str, combination: Dict[str, Any], model: str = "gemini-2.0-flash"
     ) -> str:
         """Generate a concise rationale for a given design combination."""
         client = self.make_gemini_client()
@@ -267,6 +268,7 @@ class GeminiClient:
             logger.info(f"Generating rationale for the selected combination")
             RATIONALE_PROMPT_TEMPLATE = self.utility.load_template(template="rationale")
             prompt = RATIONALE_PROMPT_TEMPLATE.format(
+                type=type,
                 color_palette=combination["color_palette"],
                 pattern=combination["pattern"],
                 motif=combination["motif"],

@@ -29,7 +29,7 @@ class Combinations:
         """Return True when any selection value is flagged as default."""
         return any(isinstance(v, str) and v.lower() == "default" for v in d.values())
 
-    def create_combinations(self, selections) -> List[Json]:
+    def create_combinations(self, type: str, selections: Dict[str, Any]) -> List[Json]:
         """Generate three combinations based on selections and available catalogs."""
         catalog = {
             "color_palette": list(self.options.color_palettes),
@@ -38,6 +38,6 @@ class Combinations:
             "style": list(self.options.themes),
             "finish": list(self.options.finishes),
         }
-        combos = self.combiner.generate(selections, catalog)
+        combos = self.combiner.generate(type, selections, catalog)
         logger.info(f"Generated {len(combos)} combinations")
         return combos

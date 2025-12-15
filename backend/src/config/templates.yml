@@ -1,14 +1,18 @@
 PLATE_TEMPLATE : |
-  "Create a premium, print-ready paper plate design featuring {color_palette}, with {pattern} as the base and {motif} accents expressed in a {theme} style. Incorporate finishing touches such as {finish} to achieve a polished, commercial-quality aesthetic. The composition should maintain a balance between visual appeal and festive functionality while aligning with U.S. retail holiday and gifting trends."
+  Create a premium, print-ready paper plate design featuring {color_palette}, with {pattern} as the base and {motif} accents expressed in a {theme} style. Incorporate finishing touches such as {finish} to achieve a polished, commercial-quality aesthetic. The composition should maintain a balance between visual appeal and festive functionality while aligning with U.S. retail holiday and gifting trends.
+  Do not include questions, lists of options, or requests for more information in your response.
 
 CUP_TEMPLATE : |
-  "Create a premium, print-ready cup design featuring {color_palette}, with {pattern} as the base and {motif} accents expressed in a {theme} style. Incorporate finishing touches such as {finish} to achieve a polished, commercial-quality aesthetic. The composition should balance visual appeal with festive usability and align with U.S. retail holiday and gifting trends."
+  Create a premium, print-ready cup design featuring {color_palette}, with {pattern} as the base and {motif} accents expressed in a {theme} style. Incorporate finishing touches such as {finish} to achieve a polished, commercial-quality aesthetic. The composition should balance visual appeal with festive usability and align with U.S. retail holiday and gifting trends.
+  Do not include questions, lists of options, or requests for more information in your response.
 
 NAPKIN_TEMPLATE : |
-  "Create a premium, print-ready napkin design featuring {color_palette}, with {pattern} as the base and {motif} accents expressed in a {theme} style. Incorporate finishing touches such as {finish} to achieve a polished, commercial-quality look. The design should balance visual appeal with festive usability while aligning with U.S. retail holiday and gifting trends."
+  Create a premium, print-ready napkin design featuring {color_palette}, with {pattern} as the base and {motif} accents expressed in a {theme} style. Incorporate finishing touches such as {finish} to achieve a polished, commercial-quality look. The design should balance visual appeal with festive usability while aligning with U.S. retail holiday and gifting trends.
+  Do not include questions, lists of options, or requests for more information in your response.
+
 
 COMBINATION_PROMPT_TEMPLATE : |
-  You are a senior surface-pattern designer asked to propose the **top 3 print-ready combinations** for a premium napkin.
+  You are a senior surface-pattern designer asked to propose the **top 3 print-ready combinations** for a premium {type}s designs.
 
   ## Inputs
   ### User selections (may include "Default")
@@ -54,7 +58,7 @@ COMBINATION_PROMPT_TEMPLATE : |
   - If it **is** "Default", you must decide from the catalog (and vary across the 3 suggestions).
 
 RATIONALE_PROMPT_TEMPLATE : |
-  You are an expert surface designer specializing in premium paper napkins and tableware aesthetics. 
+  You are an expert surface designer specializing in premium {type}s and tableware aesthetics. 
   Given the following design combination, write a short rationale (2–4 sentences) explaining why this 
   combination works well together and what visual or emotional effect it creates. 
   Focus on harmony, balance, and design storytelling.
