@@ -1,15 +1,10 @@
 import { useMemo, useState } from "react";
 import { userContext } from "./userContext";
 
-function dedupeById(list = []) {
+function uniqueById(list = []) {
   const seen = new Set();
   return list.filter((item) => {
-    const key =
-      item?.id ??
-      item?.saved_path ??
-      item?.imageId ??
-      item?.key ??
-      JSON.stringify(item);
+    const key = item?.id ?? JSON.stringify(item);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -25,8 +20,7 @@ const UserState = ({ children }) => {
   const [activeVariant, setActiveVariant] = useState({});
   const [selectedComboIndex, setSelectedComboIndex] = useState(0);
   const [editPrompt, setEditPrompt] = useState("");
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const STREAMLIT_DEFAULTS = {
     color_palette: [
@@ -140,16 +134,15 @@ const UserState = ({ children }) => {
           : Array.isArray(data)
           ? data.length
           : 0;
-
       if (offset === 0) {
-        setRecentImages(dedupeById(items));
+        setRecentImages(uniqueById(items));
       } else {
-        setRecentImages((prev) => dedupeById([...prev, ...items]));
+        setRecentImages((prev) => uniqueById([...prev, ...items]));
       }
       setRecentTotal(total);
 
       const hasMore = offset + limit < total && items.length > 0;
-      return { items: dedupeById(items), total, has_more: hasMore };
+      return { items, total, has_more: hasMore };
     } catch (error) {
       console.info("No recent images available:", error);
       return { items: [], total: 0, has_more: false };
@@ -190,8 +183,8 @@ const UserState = ({ children }) => {
     const data = await fetchRelatedImages(payload, { offset, limit });
     setRelatedImages((prev) =>
       append
-        ? dedupeById([...prev, ...(data.items || [])])
-        : dedupeById(data.items || [])
+        ? uniqueById([...prev, ...(data.items || [])])
+        : uniqueById(data.items || [])
     );
     setRelatedTotal(data.total || 0);
     return data;
@@ -205,8 +198,8 @@ const UserState = ({ children }) => {
     const data = await fetchRecentImages({ offset, limit });
     setRecentImages((prev) =>
       append
-        ? dedupeById([...prev, ...(data.items || [])])
-        : dedupeById(data.items || [])
+        ? uniqueById([...prev, ...(data.items || [])])
+        : uniqueById(data.items || [])
     );
     setRecentTotal(data.total || 0);
     return data;
