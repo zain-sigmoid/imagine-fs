@@ -13,7 +13,7 @@ const Results = ({
 }) => {
   if (!imageSets.length) {
     return (
-      <section className="section-card px-5 py-4 text-center text-muted h-100">
+      <section className="section-card px-5 py-4 text-center text-muted h-100 shadow-sm">
         <h2 className="h5 text-dark mb-3">
           <i className="fa-solid fa-wand-sparkles me-2 text-primary"></i>
           Ready when you are
@@ -26,7 +26,7 @@ const Results = ({
     );
   }
   return (
-    <article className={`section-card p-4 mb-4 border-primary border-2`}>
+    <article className={`section-card p-4 mb-4 shadow-sm border-2`}>
       <section aria-live="polite">
         <nav className="mb-3">
           <div className="nav nav-tabs">

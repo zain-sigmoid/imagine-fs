@@ -2,11 +2,11 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { userContext } from "../context/userContext";
 import { useNavigate } from "react-router-dom";
 import { ICON_DICTIONARY } from "../config/icons";
-import "./selections.css";
+import "./styling/selections.css";
 
 const enhancementLevels = [
-  { id: "cup", label: "Cup & Mugs", icon: "fa-mug-hot" },
-  { id: "plates", label: "Plates and Bowl", icon: "fa-bowl-rice" },
+  { id: "cup", label: "Cup", icon: "fa-mug-hot" },
+  { id: "plates", label: "Plates", icon: "fa-bowl-rice" },
   { id: "napkin", label: "Napkin", icon: "fa-note-sticky" },
 ];
 
@@ -175,6 +175,8 @@ const Selections = (props) => {
           }));
         },
         onDone: async (data) => {
+          showAlert("Image generation complete.", "success");
+          navigate("/gallery?generated-images");
           const { id, theme, combo, type } = data || {};
           await loadRelatedImages(
             {
@@ -185,8 +187,6 @@ const Selections = (props) => {
             },
             { offset: 0, limit: 6 }
           );
-          showAlert("Image generation complete.", "success");
-          navigate("/gallery?generated-images");
         },
         onError: (data) => {
           const msg =
@@ -350,7 +350,8 @@ const Selections = (props) => {
                       system explore the best combos.
                     </p>
                     <p className="small text-dark-emphasis mb-0">
-                      Add a few custom tweaks when you want a signature look.
+                      <strong>Three</strong> Best Combos are selected from the
+                      default option with selected options
                     </p>
                     <div className="smart-default-shine"></div>
                   </div>
