@@ -62,6 +62,7 @@ async def generate_stream(
     service: Generation = Depends(ig.get_image_generation),
 ):
     """Stream image generation events so the client can render partial results."""
+
     async def event_stream():
         """Yield streaming chunks from the generation service."""
         async for chunk in service.generate_image_stream(context=payload):
@@ -184,7 +185,7 @@ async def download_image(
 
 
 @router.get("/recent-images")
-async def related(
+async def recent(
     offset: int = 0,
     limit: int = 9,
     service: Imagine = Depends(ig.get_imagine),
@@ -210,13 +211,14 @@ async def related(
         }
     except Exception as e:
         logger.error(f"Exception Occurred : {e}")
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/related-images")
-async def recent(
+async def related(
     payload: RelatedRequest,
     offset: int = 0,
     limit: int = 12,
@@ -240,7 +242,6 @@ async def recent(
         }
     except Exception as e:
         logger.error(f"Exception Occurred : {e}")
-        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

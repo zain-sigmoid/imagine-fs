@@ -1,14 +1,21 @@
 """Orchestrates synchronous and streaming image generation workflows."""
 
 import os
+import io
 import json
 import time
 import asyncio
+import requests
 import traceback
 from PIL import Image
-from datetime import datetime
+from io import BytesIO
+from google import genai
+from openai import OpenAI
+from socket import gaierror
 from termcolor import colored
-from typing import AsyncIterator, Dict, List, Tuple
+from datetime import datetime
+from typing import AsyncIterator, Dict, List, Tuple, Any
+
 from src.models.generate import (
     GenerateResponse,
     GenerateRequest,
@@ -18,12 +25,150 @@ from src.models.generate import (
 )
 from src.utility.utils import Helper
 from src.utility.path_finder import Finder
-from src.services.image_generation_service.model import Imagine, Generate
+from src.handlers.error_handler import MapExceptions
+from src.services.image_generation_service.model import Imagine
+from src.services.post_service.post_processing import PostProcessing
 from src.services.combination_service.llm_combiner import GeminiClient
 from src.services.combination_service.make_combinations import Combinations
 from src.utility.logger import AppLogger
 
 logger = AppLogger.get_logger(__name__)
+
+
+class Generate:
+    """Low-level image generation helpers using OpenAI, Gemini, or local mocks.
+
+    Handles API calls, post-processing, and basic error mapping.
+    Intended to be invoked by higher-level Generation orchestration.
+    """
+
+    def __init__(
+        self,
+    ):
+        """Set up paths, post-processing, and exception mappers."""
+        self.path = Finder()
+        self.post_processing = PostProcessing()
+        self.exceptions = MapExceptions()
+
+    def generate_with_openai(
+        self, final_prompt: str, model_name: str = "dall-e-3"
+    ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
+        """Call OpenAI images API to generate variants for the provided prompt."""
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return {
+                "status": False,
+                "type": "Key Error",
+                "msg": "GEMINI_API_KEY is not set.",
+            }
+        client = OpenAI(api_key=api_key) if api_key else None
+        gen_kwargs = {
+            "model": model_name,
+            "prompt": final_prompt,
+            "size": "1024x1024",
+            "quality": "hd",
+        }
+        try:
+            resp = client.images.generate(**gen_kwargs)
+            if not resp or not getattr(resp, "data", None):
+                return None, None
+            else:
+                for i, item in enumerate(resp.data, start=1):
+                    if getattr(item, "b64_json", None):
+                        img = self.b64_to_image(item.b64_json)
+                    elif getattr(item, "url", None):
+                        try:
+                            logger.info("Fetching image from URL")
+                            resp = requests.get(item.url, timeout=10)
+                            resp.raise_for_status()
+                            img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+                        except Exception as e:
+                            logger.warning(f"Could not fetch image from URL: {e}")
+                            return None, None
+                    else:
+                        logger.info(f"Result {i}: Unrecognized response format.")
+                        return None, None
+                    if img is not None:
+                        logger.info("Image generated successfully")
+                        low, med, high = self.post_processing.apply_post_processing(img)
+                        return img, {"low": low, "medium": med, "high": high}
+        except gaierror as e:
+            logger.error("Cannot reach server")
+            return {
+                "status": False,
+                "type": "network",
+                "msg": "Cannot reach Gemini servers. Check internet/DNS/VPN.",
+                "details": str(e),
+            }
+        except Exception as e:
+            logger.error(f"Error Occurred while generating:{e}")
+            raise self.exceptions.map_openai_exception(e)
+
+    def generate_with_gemini(
+        self,
+        prompt: str,
+    ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
+        """Generate an image with Gemini and return base plus enhanced variants."""
+        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        if not GEMINI_API_KEY:
+            logger.error("GEMINI API Key not Found")
+            return None, None
+        client_gemini = genai.Client(api_key=GEMINI_API_KEY)
+        """
+        Calls the image model and returns a tuple of (original_image, enhanced_variants).
+        enhanced_variants is a dict with keys low/medium/high or None on failure.
+        """
+        try:
+            logger.info("generating image with Gemini Model")
+            # --- Gemini image generation ---
+            resp = client_gemini.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=[prompt],
+            )
+            candidates = getattr(resp, "candidates", []) or []
+            for candidate in candidates:
+                parts = getattr(
+                    candidate, "content", getattr(candidate, "contents", None)
+                )
+                parts = getattr(parts, "parts", []) if parts is not None else []
+                for part in parts:
+                    if part.inline_data is None:
+                        continue
+                    img = Image.open(BytesIO(part.inline_data.data)).convert("RGBA")
+                    low, medium, high = self.post_processing.apply_post_processing(img)
+                    return img, {"low": low, "medium": medium, "high": high}
+            return None, None
+
+        except Exception as e:
+            logger.error(f"Could not generate image: {e}")
+            raise self.exceptions.map_gemini_exception(e)
+
+    def generate_mock_image(
+        self, index: int, folder: str = "demo", count: int = 3
+    ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
+        """
+        Function to retun mock images to test the UI instead of generating images repeatedly
+        """
+        logger.info(f"generating mock for image {index}")
+        folder_path = self.path.get_directory("data") / folder
+        image_files = sorted(
+            [
+                f
+                for f in os.listdir(folder_path)
+                if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+            ],
+            key=lambda x: os.path.getmtime(os.path.join(folder_path, x)),
+            reverse=True,
+        )[:count]
+        index = index - 1
+        if not image_files:
+            return None, None
+        img_path = os.path.join(folder_path, image_files[index])
+        img = Image.open(img_path).convert("RGBA")
+        if img is not None:
+            low, medium, high = self.post_processing.apply_post_processing(img)
+            return img, {"low": low, "medium": medium, "high": high}
+        return None, None
 
 
 class Generation:
@@ -33,6 +178,7 @@ class Generation:
     Provides both synchronous and streaming interfaces for clients.
     Uses helpers for post-processing and rationale generation when needed.
     """
+
     def __init__(self):
         """Initialize generation dependencies and reusable helpers."""
         self.ATTR_KEYS = ("color_palette", "pattern", "motif", "style", "finish")
@@ -42,6 +188,7 @@ class Generation:
         self.path = Finder()
         self.combinations = Combinations()
         self.gemini_client = GeminiClient()
+        self.RUN_MODE = os.getenv("RUN_MODE", "actual")
 
     def _pre_loading(self, combo: dict, context: GenerateRequest) -> str:
         """Prepare prompt content and cleaned combo design before generation."""
@@ -53,6 +200,29 @@ class Generation:
             extra=context.extra_detail,
         )
         return final_prompt, prompt_design
+
+    def resolve_designs(self, context: GenerateRequest) -> List[Dict[str, Any]]:
+        """
+        Resolve the list of design combinations to run based on the active execution mode.
+
+        This method centralizes the logic for selecting between:
+          - Mock mode: returns static or test-friendly ingredient data from
+          - Actual mode: generates real design combinations using
+        """
+        if self.RUN_MODE == "mock":
+            return self.imagine.get_mock_ingredients(type="designs")
+        return self.combinations.create_combinations(
+            type=context.enhancement, selections=context.selections
+        )
+
+    def resolve_ratonale(self, type: str, user_combo: Dict[str, Any]) -> str:
+        """
+        Resolve the rationale to run based on the active execution mode.
+        """
+        if self.RUN_MODE == "mock":
+            rationale = self.imagine.get_mock_ingredients(type="rationale")
+            return rationale
+        return self.gemini_client.generate_rationale(type, user_combo)
 
     def _post_loading(
         self,
@@ -108,22 +278,27 @@ class Generation:
         start = time.time()
         has_default = self.combinations.any_default(context.selections)
         if has_default:
-            designs_to_run = self.combinations.create_combinations(
-                context.selections
-            )  # output: List[Json]
+            designs_to_run = self.resolve_designs(context=context)
         else:
             user_combo = {k: context.selections[k] for k in self.ATTR_KEYS}
-            rationale = self.gemini_client.generate_rationale(user_combo)
+            rationale = self.resolve_ratonale(
+                type=context.enhancement, user_combo=user_combo
+            )
             time.sleep(2)  # to avaoid rate limit
             user_combo["rationale"] = rationale if rationale else ""
             designs_to_run = [user_combo]
         try:
             for idx, combo in enumerate(designs_to_run, start=1):
                 final_prompt, prompt_design = self._pre_loading(combo, context)
-                img, variants = self.generate.generate_with_gemini(final_prompt)
-                # img, variants = self.generate.generate_mock_image(index=3)
+                if self.RUN_MODE == "mock":
+                    img, variants = self.generate.generate_mock_image(index=3)
+                else:
+                    img, variants = self.generate.generate_with_gemini(final_prompt)
+
                 if img is None or variants is None:
                     logger.info(f"No image returned for combo {idx}.")
+                    continue
+
                 variants_dict = self._post_loading(
                     img, variants, context, prompt_design, rationale
                 )
@@ -164,41 +339,13 @@ class Generation:
         has_default = self.combinations.any_default(context.selections)
         if has_default:
             logger.info(f"Has default: {colored(has_default, 'green')}")
-            designs_to_run = self.combinations.create_combinations(
-                context.selections
-            )  # output: List[Json]
-            # designs_to_run = [
-            #     {
-            #         "color_palette": "pastel pinks",
-            #         "pattern": "stripes",
-            #         "motif": "bats",
-            #         "style": "whimsical gothic",
-            #         "finish": "matte",
-            #         "rationale": "The bat motif adds a subtle gothic touch to the pink stripes, complementing the whimsical gothic style. The matte finish enhances the softness of the pastel pinks and keeps it sophisticated.",
-            #     },
-            #     {
-            #         "color_palette": "pastel pinks",
-            #         "pattern": "stripes",
-            #         "motif": "pumpkins",
-            #         "style": "whimsical gothic",
-            #         "finish": "matte",
-            #         "rationale": "Pumpkins offer a different take on the gothic, leaning into a harvest theme while maintaining the whimsical style. The embossed texture adds a tactile element, elevating the premium feel of the napkin.",
-            #     },
-            #     {
-            #         "color_palette": "pastel pinks",
-            #         "pattern": "stripes",
-            #         "motif": "stars",
-            #         "style": "whimsical gothic",
-            #         "finish": "matte",
-            #         "rationale": "Stars provide a celestial gothic element, creating a slightly ethereal feel. Foil stamping highlights the stars, creating a subtle shimmer that enhances the design's premium appeal.",
-            #     },
-            # ]
+            designs_to_run = self.resolve_designs(context=context)
         else:
             logger.info(f"Has default: {colored(has_default, 'red')}")
             user_combo = {k: context.selections[k] for k in self.ATTR_KEYS}
-            rationale = self.gemini_client.generate_rationale(user_combo)
-            # rationale = "A vibrant and colorful design that captures the essence of joy and celebration."
-            await asyncio.sleep(2)  # to avaoid rate limit
+            rationale = self.resolve_ratonale(
+                type=context.enhancement, user_combo=user_combo
+            )
             user_combo["rationale"] = rationale if rationale else ""
             designs_to_run = [user_combo]
         try:
@@ -214,8 +361,11 @@ class Generation:
 
                 logger.info(f"Generating image for combo {idx}...")
                 # generate image for this combo
-                img, variants = self.generate.generate_with_gemini(final_prompt)
-                # img, variants = self.generate.generate_mock_image(index=idx)
+
+                if self.RUN_MODE == "mock":
+                    img, variants = self.generate.generate_mock_image(index=3)
+                else:
+                    img, variants = self.generate.generate_with_gemini(final_prompt)
 
                 if img is None or variants is None:
                     logger.warning(f"No image returned for combo {idx}.")

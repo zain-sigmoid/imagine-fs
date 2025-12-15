@@ -8,22 +8,18 @@ import base64
 import json
 import requests
 from PIL import Image
-from io import BytesIO
-from google import genai
 from pathlib import Path
-from openai import OpenAI
-from socket import gaierror
 from datetime import datetime
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional, List, Tuple
 
 from src.utility.utils import Helper
 from src.config.themes import THEMES
+from src.config.mock import Mock
 from src.utility.path_finder import Finder
 from src.config.themes import THEMES_PRESETS_MIN, DEFAULTS
 from src.models.generate import SidebarImage, Combo, RelatedRequest
 from src.services.post_service.post_processing import PostProcessing
-from src.handlers.error_handler import MapExceptions
 from src.utility.path_finder import Finder
 from src.utility.logger import AppLogger
 
@@ -54,6 +50,7 @@ class Imagine:
         self.helper = Helper()
         self.path = Finder()
         self.post_processing = PostProcessing()
+        self.mock = Mock()
         self.STRENGTH_INDEX = {"Light": 0, "Medium": 1, "Strong": 2}
         self.ATTR_KEYS = ("color_palette", "pattern", "motif", "style", "finish")
 
@@ -165,6 +162,12 @@ class Imagine:
         fake_item = SimpleNamespace(b64_json=b64_str, url=None)
         fake_resp = SimpleNamespace(data=[fake_item])
         return fake_resp
+
+    def get_mock_ingredients(self, type: str = "designs"):
+        if type == "rationale":
+            return self.mock.MOCK_RATIONALE
+
+        return self.mock.MOCK_DESIGNS
 
     def b64_to_image(self, b64_str: str) -> Image.Image:
         """Decode a base64 string into a RGBA PIL Image."""
@@ -471,7 +474,6 @@ class Imagine:
             slice_fnames = matching_fnames[start:]
 
         related_files: List[SidebarImage] = []
-
         for fname in slice_fnames:
             sidebar_image = self._build_sidebar_image(output_dir, fname, metadata)
             if not sidebar_image:
@@ -517,7 +519,7 @@ class Imagine:
             file_path.unlink()  # delete file
             logger.info(f"Image Deleted for id :{image_id}")
             # Also delete metadata entry if exists
-            output_dir_metadata = output_dir / "metadata.json"
+            output_dir_metadata = output_dir / "image_metadata.json"
             if output_dir_metadata.exists():
                 try:
                     import json
@@ -669,139 +671,3 @@ class Imagine:
             download_name = f"{stem}_{normalized_level}.png"
 
         return raw_bytes, mime_type, download_name
-
-
-class Generate:
-    """Low-level image generation helpers using OpenAI, Gemini, or local mocks.
-
-    Handles API calls, post-processing, and basic error mapping.
-    Intended to be invoked by higher-level Generation orchestration.
-    """
-
-    def __init__(
-        self,
-    ):
-        """Set up paths, post-processing, and exception mappers."""
-        self.path = Finder()
-        self.post_processing = PostProcessing()
-        self.exceptions = MapExceptions()
-
-    def generate_with_openai(
-        self, final_prompt: str, model_name: str = "dall-e-3"
-    ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
-        """Call OpenAI images API to generate variants for the provided prompt."""
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            return {
-                "status": False,
-                "type": "Key Error",
-                "msg": "GEMINI_API_KEY is not set.",
-            }
-        client = OpenAI(api_key=api_key) if api_key else None
-        gen_kwargs = {
-            "model": model_name,
-            "prompt": final_prompt,
-            "size": "1024x1024",
-            "quality": "hd",
-        }
-        try:
-            resp = client.images.generate(**gen_kwargs)
-            if not resp or not getattr(resp, "data", None):
-                return None, None
-            else:
-                for i, item in enumerate(resp.data, start=1):
-                    if getattr(item, "b64_json", None):
-                        img = self.b64_to_image(item.b64_json)
-                    elif getattr(item, "url", None):
-                        try:
-                            logger.info("Fetching image from URL")
-                            resp = requests.get(item.url, timeout=10)
-                            resp.raise_for_status()
-                            img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
-                        except Exception as e:
-                            logger.warning(f"Could not fetch image from URL: {e}")
-                            return None, None
-                    else:
-                        logger.info(f"Result {i}: Unrecognized response format.")
-                        return None, None
-                    if img is not None:
-                        logger.info("Image generated successfully")
-                        low, med, high = self.post_processing.apply_post_processing(img)
-                        return img, {"low": low, "medium": med, "high": high}
-        except gaierror as e:
-            logger.error("Cannot reach server")
-            return {
-                "status": False,
-                "type": "network",
-                "msg": "Cannot reach Gemini servers. Check internet/DNS/VPN.",
-                "details": str(e),
-            }
-        except Exception as e:
-            logger.error(f"Error Occurred while generating:{e}")
-            raise self.exceptions.map_openai_exception(e)
-
-    def generate_with_gemini(
-        self,
-        prompt: str,
-    ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
-        """Generate an image with Gemini and return base plus enhanced variants."""
-        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-        if not GEMINI_API_KEY:
-            logger.error("GEMINI API Key not Found")
-            return None, None
-        client_gemini = genai.Client(api_key=GEMINI_API_KEY)
-        """
-        Calls the image model and returns a tuple of (original_image, enhanced_variants).
-        enhanced_variants is a dict with keys low/medium/high or None on failure.
-        """
-        try:
-            logger.info("generating image with Gemini Model")
-            # --- Gemini image generation ---
-            resp = client_gemini.models.generate_content(
-                model="gemini-2.5-flash-image",
-                contents=[prompt],
-            )
-            candidates = getattr(resp, "candidates", []) or []
-            for candidate in candidates:
-                parts = getattr(
-                    candidate, "content", getattr(candidate, "contents", None)
-                )
-                parts = getattr(parts, "parts", []) if parts is not None else []
-                for part in parts:
-                    if part.inline_data is None:
-                        continue
-                    img = Image.open(BytesIO(part.inline_data.data)).convert("RGBA")
-                    low, medium, high = self.post_processing.apply_post_processing(img)
-                    return img, {"low": low, "medium": medium, "high": high}
-            return None, None
-
-        except Exception as e:
-            logger.error(f"Could not generate image: {e}")
-            raise self.exceptions.map_gemini_exception(e)
-
-    def generate_mock_image(
-        self, index: int, folder: str = "demo", count: int = 3
-    ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
-        """
-        Function to retun mock images to test the UI instead of generating images repeatedly
-        """
-        logger.info(f"generating mock for image {index}")
-        folder_path = self.path.get_directory("data") / folder
-        image_files = sorted(
-            [
-                f
-                for f in os.listdir(folder_path)
-                if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
-            ],
-            key=lambda x: os.path.getmtime(os.path.join(folder_path, x)),
-            reverse=True,
-        )[:count]
-        index = index - 1
-        if not image_files:
-            return None, None
-        img_path = os.path.join(folder_path, image_files[index])
-        img = Image.open(img_path).convert("RGBA")
-        if img is not None:
-            low, medium, high = self.post_processing.apply_post_processing(img)
-            return img, {"low": low, "medium": medium, "high": high}
-        return None, None
