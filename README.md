@@ -1,12 +1,16 @@
 # Imagine (full-stack)
 
-LLM-powered premium napkin designer with a React/Vite frontend and a FastAPI backend. Users pick a theme, tweak palette/pattern/motif/style/finish filters, and generate variants via streaming Gemini/OpenAI calls (with mock/local fallbacks) plus related/recent browsing.
+LLM-powered premium napkin designer with a React/Vite frontend and a FastAPI backend. Users pick a theme, tweak `palette/pattern/motif/style/finish filters`, and generate variants via streaming Gemini/OpenAI calls (with mock/local fallbacks) plus related/recent browsing.
 
 ## What’s inside
 - React 19 + Vite UI (`frontend/`) with streaming generation, gallery, related/recent panes, downloads, edits, and selection-first flows.
 - FastAPI service (`backend/src`) that streams generation events, serves paginated related/recent images, and supports downloads/deletes/edits.
 - Post-processing and prompt utilities (OpenCV + Pillow), LLM combiner for defaulted selections, and metadata-backed storage.
 - Inline mock paths remain available so the UI can run without external API costs.
+
+### Mock Mode
+- Set `RUN_MODE` as *mock* to run app without hitting gemini api, it will run using images from demo
+- Set `RUN_MODe` as *actual* to run the actual app with fetching gemini or openai API
 
 ## Repository layout
 ```

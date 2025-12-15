@@ -15,7 +15,6 @@ build/
 dist/
 .DS_Store
 .idea/
-.vscode/
 
 streamlit/
 backend/logs/
@@ -23,7 +22,6 @@ backend/src/demo
 backend/src/outputs
 backend/notebooks
 backend/extra
-backend/data/demo
 backend/data/logs
 backend/data/outputs/*.png
 backend/data/outputs/*.json
