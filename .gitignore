@@ -27,3 +27,6 @@ backend/data/outputs/*.png
 backend/data/outputs/*.json
 
 frontend/extra
+
+imagine_sigscan.json
+scancode_report.json
