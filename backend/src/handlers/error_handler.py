@@ -59,6 +59,11 @@ class ImageProviderError(Exception):
 
 
 class OpenAIImageError(ImageProviderError):
+    """
+    Represents errors originating from OpenAI's image generation or editing API.
+    Provides structured error details including status, type, and provider context.
+    """
+
     def __init__(
         self,
         message: str,
@@ -66,6 +71,7 @@ class OpenAIImageError(ImageProviderError):
         error_type: str = "openai_error",
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
+        """Initializing Image Error class for openai model by inheriting ImageProviderError class"""
         super().__init__(
             provider="openai",
             message=message,
@@ -76,6 +82,11 @@ class OpenAIImageError(ImageProviderError):
 
 
 class GeminiImageError(ImageProviderError):
+    """
+    Represents errors raised during Gemini-based image processing operations.
+    Encapsulates standardized metadata such as status code and provider type.
+    """
+
     def __init__(
         self,
         message: str,
@@ -83,6 +94,7 @@ class GeminiImageError(ImageProviderError):
         error_type: str = "gemini_error",
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
+        """Initializing Image Error class for gemini model by inheriting ImageProviderError class"""
         super().__init__(
             provider="gemini",
             message=message,
@@ -99,6 +111,7 @@ class MapExceptions:
     Intended to centralize logging and status code mapping.
     Safe to instantiate with default configuration.
     """
+
     def __init__(self):
         """Initialize the mapper without additional configuration."""
         pass
