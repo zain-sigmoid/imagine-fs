@@ -41,10 +41,10 @@ class LLMCombiner:
         selections: dict like {"color_palette": "...", "pattern": "...", "motif": "...", "style": "...", "finish": "..."}
         catalog: dict like {"color_palette": [...], "pattern": [...], "motif": [...], "style": [...], "finish": [...]}
         """
-        PROMPT_TEMPLATE = self.utility.load_template(template="combination")
+        prompt_template = self.utility.load_template(template="combination")
         user_selections_json = json.dumps(selections, ensure_ascii=False, indent=2)
         catalog_json = json.dumps(catalog, ensure_ascii=False, indent=2)
-        return PROMPT_TEMPLATE.format(
+        return prompt_template.format(
             type=type,
             user_selections_json=user_selections_json,
             catalog_json=catalog_json,
@@ -156,7 +156,7 @@ class LLMCombiner:
                 if len(vals) == 0:
                     raise ValueError(f"No options for '{k}'.")
                 combo[k] = vals[i % len(vals)]
-            combo["rationale"] = "Local fallback: balanced rotation across defaults."
+            combo["rationale"] = "balanced rotation across defaults."
             picks.append(combo)
         # ensure uniqueness
         uniq, seen = [], set()
@@ -194,6 +194,7 @@ class LLMCombiner:
             return combos
         except Exception:
             # Fallback if anything goes wrong
+            logger.warning(f"Combination Generation failes, falling to local fallback")
             return self._local_fallback(selections, catalog)
 
 
@@ -217,9 +218,9 @@ class GeminiClient:
         # Fallback to env var
         key = os.getenv("GEMINI_API_KEY")
         if not key:
+            logger.error("Gemini API key not found")
             raise RuntimeError(
-                "Gemini API key not found. Set Streamlit secret GEMINI_API_KEY "
-                "or environment variable GEMINI_API_KEY."
+                "Gemini API key not found. Set GEMINI_API_KEY as environment variable"
             )
         return key
 
@@ -240,6 +241,7 @@ class GeminiClient:
         try:
             resp = client.models.generate_content(model=model, contents=prompt)
         except Exception as e:
+            logger.error(f"Error in Gemini Wrapper : {e}")
             raise self.map_exception.map_gemini_exception(e)
 
         # Extract text robustly
@@ -254,6 +256,7 @@ class GeminiClient:
             if chunks:
                 return "\n".join(chunks)
         except Exception:
+            logger.warning("Fallback Stitching failed")
             pass
 
         # Last resort
@@ -266,8 +269,8 @@ class GeminiClient:
         client = self.make_gemini_client()
         try:
             logger.info(f"Generating rationale for the selected combination")
-            RATIONALE_PROMPT_TEMPLATE = self.utility.load_template(template="rationale")
-            prompt = RATIONALE_PROMPT_TEMPLATE.format(
+            rationale_prompt_template = self.utility.load_template(template="rationale")
+            prompt = rationale_prompt_template.format(
                 type=type,
                 color_palette=combination["color_palette"],
                 pattern=combination["pattern"],

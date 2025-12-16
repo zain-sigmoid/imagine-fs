@@ -59,7 +59,7 @@ class Generate:
             return {
                 "status": False,
                 "type": "Key Error",
-                "msg": "GEMINI_API_KEY is not set.",
+                "msg": "OPENAI_API_KEY is not set.",
             }
         client = OpenAI(api_key=api_key) if api_key else None
         gen_kwargs = {
@@ -109,11 +109,11 @@ class Generate:
         prompt: str,
     ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
         """Generate an image with Gemini and return base plus enhanced variants."""
-        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-        if not GEMINI_API_KEY:
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if not gemini_api_key:
             logger.error("GEMINI API Key not Found")
             return None, None
-        client_gemini = genai.Client(api_key=GEMINI_API_KEY)
+        client_gemini = genai.Client(api_key=gemini_api_key)
         """
         Calls the image model and returns a tuple of (original_image, enhanced_variants).
         enhanced_variants is a dict with keys low/medium/high or None on failure.
@@ -181,14 +181,14 @@ class Generation:
 
     def __init__(self):
         """Initialize generation dependencies and reusable helpers."""
-        self.ATTR_KEYS = ("color_palette", "pattern", "motif", "style", "finish")
+        self.attr_keys = ("color_palette", "pattern", "motif", "style", "finish")
         self.generate = Generate()
         self.utility = Helper()
         self.imagine = Imagine()
         self.path = Finder()
         self.combinations = Combinations()
         self.gemini_client = GeminiClient()
-        self.RUN_MODE = os.getenv("RUN_MODE", "actual")
+        self.run_mode = os.getenv("RUN_MODE", "actual")
 
     def _pre_loading(self, combo: dict, context: GenerateRequest) -> str:
         """Prepare prompt content and cleaned combo design before generation."""
@@ -209,7 +209,7 @@ class Generation:
           - Mock mode: returns static or test-friendly ingredient data from
           - Actual mode: generates real design combinations using
         """
-        if self.RUN_MODE == "mock":
+        if self.run_mode == "mock":
             return self.imagine.get_mock_ingredients(type="designs")
         return self.combinations.create_combinations(
             type=context.enhancement, selections=context.selections
@@ -219,7 +219,7 @@ class Generation:
         """
         Resolve the rationale to run based on the active execution mode.
         """
-        if self.RUN_MODE == "mock":
+        if self.run_mode == "mock":
             rationale = self.imagine.get_mock_ingredients(type="rationale")
             return rationale
         return self.gemini_client.generate_rationale(type, user_combo)
@@ -242,7 +242,7 @@ class Generation:
 
         type = context.enhancement
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        spec_parts = [prompt_design.get(key, "default") for key in self.ATTR_KEYS]
+        spec_parts = [prompt_design.get(key, "default") for key in self.attr_keys]
         short_spec = self.utility._slug("-".join(spec_parts))[:60]
         theme_slug = self.utility._slug(context.theme)
         filename = f"{theme_slug}_{stamp}_{short_spec}.png"
@@ -280,7 +280,7 @@ class Generation:
         if has_default:
             designs_to_run = self.resolve_designs(context=context)
         else:
-            user_combo = {k: context.selections[k] for k in self.ATTR_KEYS}
+            user_combo = {k: context.selections[k] for k in self.attr_keys}
             rationale = self.resolve_ratonale(
                 type=context.enhancement, user_combo=user_combo
             )
@@ -290,7 +290,7 @@ class Generation:
         try:
             for idx, combo in enumerate(designs_to_run, start=1):
                 final_prompt, prompt_design = self._pre_loading(combo, context)
-                if self.RUN_MODE == "mock":
+                if self.run_mode == "mock":
                     img, variants = self.generate.generate_mock_image(index=3)
                 else:
                     img, variants = self.generate.generate_with_gemini(final_prompt)
@@ -342,7 +342,7 @@ class Generation:
             designs_to_run = self.resolve_designs(context=context)
         else:
             logger.info(f"Has default: {colored(has_default, 'red')}")
-            user_combo = {k: context.selections[k] for k in self.ATTR_KEYS}
+            user_combo = {k: context.selections[k] for k in self.attr_keys}
             rationale = self.resolve_ratonale(
                 type=context.enhancement, user_combo=user_combo
             )
@@ -362,7 +362,7 @@ class Generation:
                 logger.info(f"Generating image for combo {idx}...")
                 # generate image for this combo
 
-                if self.RUN_MODE == "mock":
+                if self.run_mode == "mock":
                     img, variants = self.generate.generate_mock_image(index=3)
                 else:
                     img, variants = self.generate.generate_with_gemini(final_prompt)
