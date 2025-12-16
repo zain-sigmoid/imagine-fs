@@ -5,8 +5,9 @@ from typing import List, Dict
 
 class Mock:
     """Provide canned design combinations and rationale for mock generation flows."""
+
     def __init__(self):
-        self.MOCK_DESIGNS: List[Dict[str, str]] = [
+        self.mock_designs: List[Dict[str, str]] = [
             {
                 "color_palette": "pastel pinks",
                 "pattern": "stripes",
@@ -33,6 +34,6 @@ class Mock:
             },
         ]
 
-        self.MOCK_RATIONALE: str = (
+        self.mock_rationale: str = (
             "A vibrant and colorful design that captures the essence of joy and celebration."
         )

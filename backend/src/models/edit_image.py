@@ -1,12 +1,13 @@
 """Models used for the edit-image endpoint payloads and responses."""
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Dict, Literal, Optional
+from typing import Dict, Literal
 from src.models.generate import Combo, ImageItem
 
 
 class EditRequest(BaseModel):
     """Incoming request describing which image to edit and how."""
+
     id: str = Field(alias="imageId")
     variant: str
     theme: str
@@ -30,5 +31,6 @@ class EditRequest(BaseModel):
 
 class EditResponse(BaseModel):
     """Response container for edited image variants and message."""
+
     message: str = "Edit endpoint not yet implemented."
     variants: Dict[Literal["edited", "low", "medium", "high"], ImageItem]

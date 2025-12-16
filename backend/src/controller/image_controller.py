@@ -95,12 +95,12 @@ async def edit_image(
 
 
 @router.delete("/delete")
-async def delete_image(imageId: str, service: Imagine = Depends(ig.get_imagine)):
+async def delete_image(image_id: str, service: Imagine = Depends(ig.get_imagine)):
     """
     Delete an image given its imageId (stamp).
     """
     try:
-        success = service.delete_image(imageId)
+        success = service.delete_image(image_id)
 
         if not success:
             return {"success": False, "error": "Image not found or delete failed"}
@@ -144,7 +144,7 @@ async def delete_all_images(
 
 @router.get("/download")
 async def download_image(
-    imageId: str,
+    image_id: str,
     level: str = "org",
     service: Imagine = Depends(ig.get_imagine),
 ):
@@ -154,7 +154,7 @@ async def download_image(
     """
     try:
         raw_bytes, mime_type, filename = service.get_image_bytes_for_download(
-            image_id=imageId,
+            image_id=image_id,
             level=level,
         )
         if raw_bytes == None or mime_type == "" or filename == "":

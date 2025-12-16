@@ -11,7 +11,7 @@ from PIL import Image
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Any, Optional, List, Tuple, Dict
 
 from src.utility.utils import Helper
 from src.config.themes import THEMES
@@ -51,8 +51,8 @@ class Imagine:
         self.path = Finder()
         self.post_processing = PostProcessing()
         self.mock = Mock()
-        self.STRENGTH_INDEX = {"Light": 0, "Medium": 1, "Strong": 2}
-        self.ATTR_KEYS = ("color_palette", "pattern", "motif", "style", "finish")
+        self.strength_index = {"Light": 0, "Medium": 1, "Strong": 2}
+        self.attr_keys = ("color_palette", "pattern", "motif", "style", "finish")
 
     def build_final_prompt(
         self, subject: str, theme_name: str, strength_label: str
@@ -60,7 +60,7 @@ class Imagine:
         """Combine subject with themed style guidance into a final prompt string."""
         subject = (subject or "").strip()
         style = THEMES.get(theme_name, ["", "", ""])[
-            self.STRENGTH_INDEX[strength_label]
+            self.strength_index[strength_label]
         ]
         if style:
             return (
@@ -145,9 +145,9 @@ class Imagine:
         base = self._apply_design_overrides(base, design)
 
         # finalize
-        TEMPLATE = self.helper.load_template(template=type)
+        prompt_template = self.helper.load_template(template=type)
         logger.info(f"Loaded template for type: {type}")
-        text = TEMPLATE.format_map(_SafeDict(self._safe_clean(base)))
+        text = prompt_template.format_map(_SafeDict(self._safe_clean(base)))
         # collapse whitespace to keep prompt tidy
         return " ".join(text.split())
 
@@ -163,11 +163,12 @@ class Imagine:
         fake_resp = SimpleNamespace(data=[fake_item])
         return fake_resp
 
-    def get_mock_ingredients(self, type: str = "designs"):
+    def get_mock_ingredients(self, type: str = "designs") -> List[Dict[str, str]]:
+        """Fetches mock types from mock class"""
         if type == "rationale":
-            return self.mock.MOCK_RATIONALE
+            return self.mock.mock_rationale
 
-        return self.mock.MOCK_DESIGNS
+        return self.mock.mock_designs
 
     def b64_to_image(self, b64_str: str) -> Image.Image:
         """Decode a base64 string into a RGBA PIL Image."""
@@ -227,6 +228,7 @@ class Imagine:
             r = requests.get(part.image_url, timeout=60)
             r.raise_for_status()
             return r.content
+        logger.warning("Image Part is Empty")
         return None
 
     def save_image_with_metadata(
@@ -273,7 +275,7 @@ class Imagine:
     def _combination_to_badges(self, combo: dict) -> list[str]:
         """Turn a combination dictionary into human-friendly badge labels."""
         labels: list[str] = []
-        for key in self.ATTR_KEYS:
+        for key in self.attr_keys:
             raw = combo.get(key)
             if not raw or raw == "default":
                 continue
@@ -304,8 +306,8 @@ class Imagine:
         Expected format:
         {theme_slug}_{YYYYMMDD_HHMMSS}_{short_spec}.png
         """
-        FILENAME_RE = re.compile(r"^(.+?)_(\d{8}_\d{6})_(.+)\.(?:png|jpg|jpeg)$")
-        match = FILENAME_RE.match(filename)
+        filename_regex = re.compile(r"^(.+?)_(\d{8}_\d{6})_(.+)\.(?:png|jpg|jpeg)$")
+        match = filename_regex.match(filename)
         if not match:
             return None
         return match.groups()
@@ -414,8 +416,6 @@ class Imagine:
 
         return recent_images, total
 
-    from typing import Dict, List, Tuple
-
     def find_related_images(
         self,
         payload: RelatedRequest,
@@ -459,7 +459,7 @@ class Imagine:
 
             if theme == theme_slug and type == wanted_type:
                 match_count = sum(
-                    1 for key in self.ATTR_KEYS if selections.get(key) == combo.get(key)
+                    1 for key in self.attr_keys if selections.get(key) == combo.get(key)
                 )
                 if match_count >= min_matches:
                     fname = key
@@ -522,8 +522,6 @@ class Imagine:
             output_dir_metadata = output_dir / "image_metadata.json"
             if output_dir_metadata.exists():
                 try:
-                    import json
-
                     with open(output_dir_metadata, "r+") as f:
                         data = json.load(f)
                         if target_fname in data:
@@ -545,7 +543,7 @@ class Imagine:
         Delete all image files in images_dir and clear metadata.json
         Returns a small summary dict.
         """
-        deleted_files = 0
+        deleted_files: int = 0
         output_dir = self.path.get_directory("output")
         metadata_path = output_dir / "image_metadata.json"
 

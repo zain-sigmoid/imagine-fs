@@ -64,7 +64,6 @@ class Editor:
                 #     ),
                 # ]
 
-                # Call Gemini 2.5 Flash Image (preview name may still be required in some environments)
                 model_name = (
                     "gemini-2.5-flash-image"  # or "gemini-2.5-flash-image-preview"
                 )
@@ -124,6 +123,7 @@ class Editor:
         """Submit an edit job to OpenAI edits endpoint and parse the response image."""
         try:
             api_key = os.getenv("OPENAI_API_KEY")
+            edit_url = os.getenv("OPENAI_EDIT_URL")
             if not api_key:
                 return {
                     "status": False,
@@ -146,7 +146,7 @@ class Editor:
                 }
                 logger.info("Sending edit request to OpenAI...")
                 resp = requests.post(
-                    "https://api.openai.com/v1/images/edits",
+                    edit_url,
                     headers={"Authorization": f"Bearer {api_key}"},
                     data=data,
                     files=files,
@@ -230,14 +230,23 @@ class Editor:
 
 
 class Edit:
+    """
+    Handles image editing workflows using Gemini, OpenAI, or mock editing engines.
+    Provides utilities to locate the target image, apply edits, process variants,
+    and save edited outputs with updated metadata. Acts as a high-level wrapper
+    orchestrating the edit pipeline for all supported models.
+    """
+
     def __init__(self):
+        """Initializes the Edit service by configuring the editor engine"""
         self.editor = Editor()
         self.model = Imagine()
         self.utility = Helper()
-        self.ATTR_KEYS = ("color_palette", "pattern", "motif", "style", "finish")
+        self.attr_keys = ("color_palette", "pattern", "motif", "style", "finish")
 
     def edit_image(self, context: EditRequest, model: str = "gemini") -> EditResponse:
-        output_dir, metadata = self.model._get_output_dir_and_metadata()
+        """Edits an image based on the provided request and selected model"""
+        output_dir, _ = self.model._get_output_dir_and_metadata()
 
         if not output_dir.exists():
             return
@@ -280,7 +289,7 @@ class Edit:
         high = self.utility.from_pil(images.get("high", ""))
 
         spec_parts = [
-            getattr(context.combo, key) for key in self.ATTR_KEYS if key != "rationale"
+            getattr(context.combo, key) for key in self.attr_keys if key != "rationale"
         ]
         short_spec = self.utility._slug("-".join(spec_parts))[:60]
         theme_slug = self.utility._slug(context.theme)
