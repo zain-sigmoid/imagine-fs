@@ -1,7 +1,9 @@
 """Resolve important filesystem paths relative to the backend root."""
 
-import os
 from pathlib import Path
+from src.utility.logger import AppLogger
+
+logger = AppLogger.get_logger(__name__)
 
 
 class PathResolver:
@@ -32,9 +34,9 @@ class PathResolver:
         Ensures directory exists if it's a folder.
         """
         if name not in cls.DIR_MAP:
-            raise KeyError(
-                f"Unknown directory key: '{name}'. Valid keys: {list(cls.DIR_MAP.keys())}"
-            )
+            msg = f"Unknown directory key: '{name}'. Valid keys: {list(cls.DIR_MAP.keys())}"
+            logger.error(msg)
+            raise KeyError(msg)
 
         path = cls.DIR_MAP[name]
 
@@ -51,6 +53,7 @@ class Finder:
     Delegates actual lookups to PathResolver while keeping a simple interface.
     Safe to reuse anywhere in the backend codebase.
     """
+
     def __init__(self):
         """Instantiate the finder without additional configuration."""
         pass

@@ -8,8 +8,10 @@ from PIL import Image
 from typing import Dict, Any
 from src.utility.path_finder import Finder
 from src.models.generate import ImageItem
+from src.utility.logger import AppLogger
 
 ATTR_KEYS = ("color_palette", "pattern", "motif", "style", "finish")
+logger = AppLogger.get_logger(__name__)
 
 
 class Helper:
@@ -30,8 +32,13 @@ class Helper:
         """Load a prompt template from disk based on the requested type."""
         config_dir = self.path.get_directory("config")
         full_path = os.path.join(config_dir, filename)
-        with open(full_path, "r") as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(full_path, "r") as f:
+                data = yaml.safe_load(f)
+        except Exception as e:
+            logger.warning(
+                f"Unable to open file on path: {full_path}, got exception as {e}"
+            )
 
         template_map = {
             "napkin": "NAPKIN_TEMPLATE",
@@ -44,10 +51,12 @@ class Helper:
         template_key = template_map.get(template)
 
         if not template_key:
+            logger.error(f"Unknown template type: {template}")
             raise ValueError(f"Unknown template type: {template}")
 
         # check YAML contains that key
         if template_key not in data:
+            logger.error(f"Template '{template_key}' missing in {filename}")
             raise KeyError(f"Template '{template_key}' missing in {filename}")
 
         return data[template_key]
